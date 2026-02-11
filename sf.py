@@ -47,84 +47,46 @@ def bv_current(eta, i0, alpha_a, alpha_c):
     return i0 * (np.exp(arg_a) - np.exp(-arg_c))
 
 # Cathodic slope fitting helper
-" + 
-"def fit_cathodic_slope_fixed_icorr(eta_c, log_I_c, log_icorr):
-" +
-"    best = {'length': 0}
-" +
-"    for i in range(len(eta_c) - 5):
-" +
-"        for j in range(i + 5, len(eta_c)):
-" +
-"            x, y = eta_c[i:j], log_I_c[i:j]
-" +
-"            slope = np.sum(x * (y - log_icorr)) / np.sum(x**2)
-" +
-"            y_fit = slope * x + log_icorr
-" +
-"            r2 = np.corrcoef(y, y_fit)[0, 1]**2
-" +
-"            if r2 > 0.995 and (j - i) > best['length']:
-" +
-"                err = np.sum((y - y_fit)**2)
-" +
-"                best.update({'slope': slope, 'err': err, 'length': j - i})
-" +
-"    return best if 'slope' in best else None
+def fit_cathodic_slope_fixed_icorr(eta_c, log_I_c, log_icorr):
+    best = {'length': 0}
+    for i in range(len(eta_c) - 5):
+        for j in range(i + 5, len(eta_c)):
+            x, y = eta_c[i:j], log_I_c[i:j]
+            slope = np.sum(x * (y - log_icorr)) / np.sum(x**2)
+            y_fit = slope * x + log_icorr
+            r2 = np.corrcoef(y, y_fit)[0, 1]**2
+            if r2 > 0.995 and (j - i) > best['length']:
+                err = np.sum((y - y_fit)**2)
+                best.update({'slope': slope, 'err': err, 'length': j - i})
+    return best if 'slope' in best else None
 
-" +
-"# Refined joint model (Model 4)
+# Refined joint model (Model 4)
 def final_refined_joint_model(eta_c, log_I_c, eta_a, log_I_a, icorr_init):
-" +
-"    # Joint Tafel-BV fit: cathodic slope + anodic BV
-" +
-"    log_range = np.linspace(np.log10(icorr_init)-0.5, np.log10(icorr_init)+0.5, 25)
-" +
-"    best = {'total_error': np.inf}
-" +
-"    for log_ic in log_range:
-" +
-"        fit_c = fit_cathodic_slope_fixed_icorr(eta_c, log_I_c, log_ic)
-" +
-"        if not fit_c:
-" +
-"            continue
-" +
-"        slope_c, err_c = fit_c['slope'], fit_c['err']
-" +
-"        icorr = 10**log_ic
-" +
-"        def log_bv_a(e, aa):
-" +
-"            arg = np.clip(aa * F * e / (R * T), -50, 50)
-" +
-"            return np.log10(icorr * np.exp(arg) + 1e-20)
-" +
-"        try:
-" +
-"            alpha_a, _ = curve_fit(log_bv_a, eta_a, log_I_a, p0=[0.3], bounds=(0,1))
-" +
-"            err_a = np.sum((log_I_a - log_bv_a(eta_a, alpha_a[0]))**2)
-" +
-"        except:
-" +
-"            continue
-" +
-"        total = err_c + err_a
-" +
-"        if total < best['total_error']:
-" +
-"            best.update({'total_error': total, 'i0': icorr, 'alpha_a': alpha_a[0], 'slope_c': slope_c})
-" +
-"    i0 = best.get('i0', np.nan)
-" +
-"    slope_c = best.get('slope_c', 1)
-" +
-"    alpha_a = best.get('alpha_a', 0.5)
-" +
-"    alpha_c = 2.303 * R * T / (F * ((1 / slope_c) / 1000))
-" +
-"    return {'i0': i0, 'alpha_a': alpha_a, 'alpha_c': alpha_c}
+    # Joint Tafel-BV fit: cathodic slope + anodic BV
+    log_range = np.linspace(np.log10(icorr_init)-0.5, np.log10(icorr_init)+0.5, 25)
+    best = {'total_error': np.inf}
+    for log_ic in log_range:
+        fit_c = fit_cathodic_slope_fixed_icorr(eta_c, log_I_c, log_ic)
+        if not fit_c:
+            continue
+        slope_c, err_c = fit_c['slope'], fit_c['err']
+        icorr = 10**log_ic
+        def log_bv_a(e, aa):
+            arg = np.clip(aa * F * e / (R * T), -50, 50)
+            return np.log10(icorr * np.exp(arg) + 1e-20)
+        try:
+            alpha_a, _ = curve_fit(log_bv_a, eta_a, log_I_a, p0=[0.3], bounds=(0,1))
+            err_a = np.sum((log_I_a - log_bv_a(eta_a, alpha_a[0]))**2)
+        except:
+            continue
+        total = err_c + err_a
+        if total < best['total_error']:
+            best.update({'total_error': total, 'i0': icorr, 'alpha_a': alpha_a[0], 'slope_c': slope_c})
+    i0 = best.get('i0', np.nan)
+    slope_c = best.get('slope_c', 1)
+    alpha_a = best.get('alpha_a', 0.5)
+    alpha_c = 2.303 * R * T / (F * ((1 / slope_c) / 1000))
+    return {'i0': i0, 'alpha_a': alpha_a, 'alpha_c': alpha_c}
 
 
 # Refined joint model (Model 4)
@@ -250,7 +212,7 @@ for path in glob.glob('*.csv'):
         i0_f, alpha_a_f, alpha_c_f = np.nan, alpha_a_lin, alpha_c_lin
 
     # Refined joint
-    joint = final_refined_joint_model(eta_c, log_I_c, eta_a, log_I_a, i_corr, path)
+    joint = final_refined_joint_model(eta_c, log_I_c, eta_a, log_I_a, i_corr)
     i0_j, alpha_a_j, alpha_c_j = joint['i0'], joint['alpha_a'], joint['alpha_c']
 
     # Plot outputs
